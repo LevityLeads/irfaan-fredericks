@@ -51,7 +51,7 @@ export default function Hero() {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1, delay: 0.3, ease: "easeOut" }}
-          className="hidden lg:block"
+          className="max-w-[300px] mx-auto lg:max-w-none"
         >
           <Globe />
         </motion.div>
