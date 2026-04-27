@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface MarkerData {
   lat: number;
@@ -56,7 +56,7 @@ const MARKERS: MarkerData[] = [
 ];
 
 function generateArcs() {
-  const hub = MARKERS[3]; // South Africa as hub
+  const hub = MARKERS[3];
   return MARKERS.filter((_, i) => i !== 3).map((m) => ({
     startLat: hub.lat,
     startLng: hub.lng,
@@ -94,38 +94,51 @@ function makeLabel(d: MarkerData) {
 }
 
 export default function Globe() {
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const globeInstanceRef = useRef<any>(null);
+  const globeRef = useRef<any>(null);
   const [loaded, setLoaded] = useState(false);
+  const [size, setSize] = useState(0);
 
-  const handleResize = useCallback(() => {
-    const container = containerRef.current;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const globe = globeInstanceRef.current as any;
-    if (!container || !globe) return;
-    const w = container.offsetWidth;
-    globe.width(w).height(w);
+  // Track wrapper size with ResizeObserver
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const w = Math.round(entry.contentRect.width);
+        if (w > 0) setSize(w);
+      }
+    });
+    ro.observe(wrapper);
+    return () => ro.disconnect();
   }, []);
 
+  // Initialize globe once we have a real size
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (size < 100 || !containerRef.current) return;
+    if (globeRef.current) {
+      // Just resize existing globe
+      globeRef.current.width(size).height(size);
+      return;
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let globe: any = null;
 
     import("globe.gl").then((mod) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const Globe = mod.default as any;
+      const GlobeGL = mod.default as any;
       const container = containerRef.current;
       if (!container) return;
 
-      const w = container.offsetWidth;
       const arcs = generateArcs();
 
-      globe = Globe({ animateIn: true })
-        .width(w)
-        .height(w)
+      globe = GlobeGL({ animateIn: true })
+        .width(size)
+        .height(size)
         .backgroundColor("rgba(0,0,0,0)")
         .showAtmosphere(true)
         .atmosphereColor("#C9A84C")
@@ -164,33 +177,42 @@ export default function Globe() {
       controls.minPolarAngle = Math.PI * 0.2;
       controls.maxPolarAngle = Math.PI * 0.8;
 
-      // Initial view
-      globe.pointOfView({ lat: 15, lng: 25, altitude: 2.2 });
+      // Initial view - zoom out a bit more on small screens
+      const altitude = size < 400 ? 2.8 : 2.2;
+      globe.pointOfView({ lat: 15, lng: 25, altitude });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      globeInstanceRef.current = globe as any;
-
-      // Fade in
+      globeRef.current = globe;
       setTimeout(() => setLoaded(true), 300);
     });
 
-    window.addEventListener("resize", handleResize);
-
     return () => {
-      window.removeEventListener("resize", handleResize);
       if (globe && typeof globe._destructor === "function") {
         globe._destructor();
+        globeRef.current = null;
       }
     };
-  }, [handleResize]);
+    // Only run on first valid size
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [size > 0 ? 1 : 0]);
+
+  // Handle resize after init
+  useEffect(() => {
+    if (globeRef.current && size > 100) {
+      globeRef.current.width(size).height(size);
+    }
+  }, [size]);
 
   return (
-    <div className="relative w-full aspect-square max-w-[600px] mx-auto">
+    <div
+      ref={wrapperRef}
+      className="relative w-full max-w-[600px] mx-auto"
+    >
       {/* Gold glow behind globe */}
       <div className="absolute inset-0 rounded-full bg-gold/5 blur-3xl scale-75" />
       <div
         ref={containerRef}
-        className={`w-full h-full transition-opacity duration-1000 ${
+        style={{ width: size || "100%", height: size || 300 }}
+        className={`transition-opacity duration-1000 ${
           loaded ? "opacity-100" : "opacity-0"
         }`}
       />
