@@ -14,9 +14,14 @@ const NAV_LINKS = [
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 50);
+    const onScroll = () => {
+      setScrolled(window.scrollY > 50);
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      setScrollProgress(docHeight > 0 ? window.scrollY / docHeight : 0);
+    };
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -29,6 +34,11 @@ export default function Navbar() {
           : "bg-transparent"
       }`}
     >
+      {/* Scroll progress bar */}
+      <div
+        className="absolute top-0 left-0 h-[2px] bg-gradient-to-r from-gold-dark via-gold to-gold-light transition-none"
+        style={{ width: `${scrollProgress * 100}%` }}
+      />
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         <a href="#hero" className="font-display text-xl tracking-wide text-gold">
           Irfaan Fredericks

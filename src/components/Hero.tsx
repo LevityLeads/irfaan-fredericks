@@ -18,33 +18,49 @@ export default function Hero() {
 
       <div className="relative max-w-7xl mx-auto px-6 w-full grid lg:grid-cols-2 gap-12 items-center pt-24 lg:pt-0">
         {/* Text */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-        >
-          <span className="inline-block text-gold text-sm tracking-[0.25em] uppercase mb-6 font-medium">
-            Film & TV Production
-          </span>
-          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl xl:text-7xl leading-[1.1] mb-6">
+        <div>
+          <motion.span
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
+            className="inline-block text-gold text-sm tracking-[0.25em] uppercase mb-6 font-medium"
+          >
+            Film &amp; TV Production
+          </motion.span>
+          <motion.h1
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.3, ease: "easeOut" }}
+            className="font-display text-4xl sm:text-5xl lg:text-6xl xl:text-7xl leading-[1.1] mb-6"
+          >
             Bringing Stories{" "}
             <span className="gold-gradient-text">to Life</span> on a Global
             Stage
-          </h1>
-          <p className="text-neutral-400 text-lg max-w-xl mb-10 leading-relaxed">
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.6, ease: "easeOut" }}
+            className="text-neutral-400 text-lg max-w-xl mb-10 leading-relaxed"
+          >
             Irfaan Fredericks has had the opportunity to produce content on a
             global scale, cultivating a vast network of reliable partners across
             various regions.
-          </p>
-          <div className="flex flex-wrap gap-4">
+          </motion.p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.85, ease: "easeOut" }}
+            className="flex flex-wrap gap-4"
+          >
             <a href="#contact" className="btn-gold inline-block">
               Let&apos;s Connect
             </a>
             <a href="#work" className="btn-gold-outline inline-block">
               View Work
             </a>
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
 
         {/* Globe */}
         <motion.div

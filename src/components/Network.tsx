@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { ArrowUpRight, CheckCircle } from "lucide-react";
+import TiltCard from "./TiltCard";
 
 const PARTNERS = [
   { country: "India", flag: "\u{1F1EE}\u{1F1F3}", partner: "India Take One" },
@@ -54,28 +55,30 @@ export default function Network() {
           className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
         >
           {PARTNERS.map((p, i) => (
-            <motion.div key={i} variants={item} className="glass-card rounded-xl p-6 group">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <span className="text-2xl mr-2">{p.flag}</span>
-                  <span className="text-gold text-sm font-medium tracking-wide uppercase">
-                    {p.country}
-                  </span>
-                </div>
-                <ArrowUpRight
-                  size={16}
-                  className="text-neutral-600 group-hover:text-gold transition-colors"
-                />
-              </div>
-              <h3 className="text-white font-semibold text-lg mb-4">{p.partner}</h3>
-              <div className="space-y-2">
-                {SERVICES.map((s) => (
-                  <div key={s} className="flex items-center gap-2 text-neutral-400 text-sm">
-                    <CheckCircle size={14} className="text-gold/70 shrink-0" />
-                    {s}
+            <motion.div key={i} variants={item}>
+              <TiltCard className="glass-card rounded-xl p-6 group h-full">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <span className="text-2xl mr-2">{p.flag}</span>
+                    <span className="text-gold text-sm font-medium tracking-wide uppercase">
+                      {p.country}
+                    </span>
                   </div>
-                ))}
-              </div>
+                  <ArrowUpRight
+                    size={16}
+                    className="text-neutral-600 group-hover:text-gold transition-colors"
+                  />
+                </div>
+                <h3 className="text-white font-semibold text-lg mb-4">{p.partner}</h3>
+                <div className="space-y-2">
+                  {SERVICES.map((s) => (
+                    <div key={s} className="flex items-center gap-2 text-neutral-400 text-sm">
+                      <CheckCircle size={14} className="text-gold/70 shrink-0" />
+                      {s}
+                    </div>
+                  ))}
+                </div>
+              </TiltCard>
             </motion.div>
           ))}
         </motion.div>
