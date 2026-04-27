@@ -1,221 +1,279 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import createGlobe from "cobe";
 
 interface MarkerData {
-  lat: number;
-  lng: number;
+  location: [number, number];
+  size: number;
   country: string;
   partner: string;
-  services: string[];
 }
 
 const MARKERS: MarkerData[] = [
-  {
-    lat: 20.5937,
-    lng: 78.9629,
-    country: "India",
-    partner: "India Take One",
-    services: ["Pre-Production", "Production", "Post-Production"],
-  },
-  {
-    lat: 23.8859,
-    lng: 45.0792,
-    country: "Saudi Arabia",
-    partner: "Ideation Studios",
-    services: ["Pre-Production", "Production", "Post-Production"],
-  },
-  {
-    lat: 9.082,
-    lng: 8.6753,
-    country: "Nigeria",
-    partner: "Greoh Studios",
-    services: ["Pre-Production", "Production", "Post-Production"],
-  },
-  {
-    lat: -30.5595,
-    lng: 22.9375,
-    country: "South Africa",
-    partner: "Wallflower Productions",
-    services: ["Pre-Production", "Production", "Post-Production"],
-  },
-  {
-    lat: 26.8206,
-    lng: 30.8025,
-    country: "Egypt",
-    partner: "Asap Films",
-    services: ["Pre-Production", "Production", "Post-Production"],
-  },
-  {
-    lat: 55.3781,
-    lng: -3.436,
-    country: "United Kingdom",
-    partner: "Precession Productions",
-    services: ["Pre-Production", "Production", "Post-Production"],
-  },
+  { location: [20.5937, 78.9629], size: 0.07, country: "India", partner: "India Take One" },
+  { location: [23.8859, 45.0792], size: 0.07, country: "Saudi Arabia", partner: "Ideation Studios" },
+  { location: [9.082, 8.6753], size: 0.07, country: "Nigeria", partner: "Greoh Studios" },
+  { location: [-30.5595, 22.9375], size: 0.07, country: "South Africa", partner: "Wallflower Productions" },
+  { location: [26.8206, 30.8025], size: 0.07, country: "Egypt", partner: "Asap Films" },
+  { location: [55.3781, -3.436], size: 0.07, country: "United Kingdom", partner: "Precession Productions" },
 ];
 
-function generateArcs() {
-  const hub = MARKERS[3];
-  return MARKERS.filter((_, i) => i !== 3).map((m) => ({
-    startLat: hub.lat,
-    startLng: hub.lng,
-    endLat: m.lat,
-    endLng: m.lng,
-  }));
-}
+// Project lat/lng to 2D screen coordinates given current globe rotation
+function projectMarker(
+  lat: number,
+  lng: number,
+  phi: number,
+  theta: number,
+  width: number,
+  height: number
+): { x: number; y: number; visible: boolean } {
+  const latRad = (lat * Math.PI) / 180;
+  const lngRad = (lng * Math.PI) / 180;
 
-function makeLabel(d: MarkerData) {
-  return `
-    <div style="
-      background: rgba(10,10,10,0.95);
-      border: 1px solid rgba(201,168,76,0.5);
-      border-radius: 10px;
-      padding: 14px 18px;
-      font-family: Inter, system-ui, sans-serif;
-      min-width: 200px;
-      backdrop-filter: blur(12px);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(201,168,76,0.1);
-    ">
-      <div style="color: #C9A84C; font-size: 10px; text-transform: uppercase; letter-spacing: 2.5px; margin-bottom: 6px; font-weight: 600;">${d.country}</div>
-      <div style="color: #FAFAFA; font-size: 15px; font-weight: 600; margin-bottom: 10px; line-height: 1.3;">${d.partner}</div>
-      <div style="display: flex; flex-direction: column; gap: 5px;">
-        ${d.services
-          .map(
-            (s) =>
-              `<div style="color: #999; font-size: 12px; display: flex; align-items: center; gap: 6px;">
-                <span style="color: #C9A84C; font-size: 10px;">&#10003;</span> ${s}
-              </div>`
-          )
-          .join("")}
-      </div>
-    </div>
-  `;
+  // Spherical to cartesian
+  const x = Math.cos(latRad) * Math.sin(lngRad - phi);
+  const y = Math.sin(latRad);
+  const z = Math.cos(latRad) * Math.cos(lngRad - phi);
+
+  // Apply theta rotation (vertical tilt)
+  const cosT = Math.cos(theta);
+  const sinT = Math.sin(theta);
+  const ry = y * cosT - z * sinT;
+  const rz = y * sinT + z * cosT;
+
+  // Only visible if facing camera
+  const visible = rz > -0.1;
+
+  // Simple orthographic projection
+  const scale = 0.42;
+  const screenX = width / 2 + x * width * scale;
+  const screenY = height / 2 - ry * height * scale;
+
+  return { x: screenX, y: screenY, visible };
 }
 
 export default function Globe() {
-  const wrapperRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const globeRef = useRef<any>(null);
-  const [loaded, setLoaded] = useState(false);
-  const [size, setSize] = useState(0);
+  const phiRef = useRef(0);
+  const thetaRef = useRef(0.25);
+  const pointerDown = useRef<{ x: number; y: number; phi: number; theta: number } | null>(null);
+  const globeRef = useRef<ReturnType<typeof createGlobe> | null>(null);
+  const frameRef = useRef<number>(0);
+  const [tooltip, setTooltip] = useState<{
+    x: number;
+    y: number;
+    country: string;
+    partner: string;
+  } | null>(null);
 
-  // Track wrapper size with ResizeObserver
-  useEffect(() => {
-    const wrapper = wrapperRef.current;
-    if (!wrapper) return;
+  const widthRef = useRef(0);
 
-    const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const w = Math.round(entry.contentRect.width);
-        if (w > 0) setSize(w);
-      }
-    });
-    ro.observe(wrapper);
-    return () => ro.disconnect();
+  const onResize = useCallback(() => {
+    if (containerRef.current && globeRef.current) {
+      const w = containerRef.current.offsetWidth;
+      widthRef.current = w;
+      globeRef.current.update({
+        width: w * 2,
+        height: w * 2,
+      });
+    }
   }, []);
 
-  // Initialize globe once we have a real size
-  useEffect(() => {
-    if (size < 100 || !containerRef.current) return;
-    if (globeRef.current) {
-      // Just resize existing globe
-      globeRef.current.width(size).height(size);
-      return;
+  // Track mouse for marker hover
+  const handleMouseMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    let clientX: number, clientY: number;
+
+    if ("touches" in e) {
+      if (!e.touches[0]) return;
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let globe: any = null;
+    // Handle drag rotation
+    if (pointerDown.current) {
+      const dx = clientX - pointerDown.current.x;
+      const dy = clientY - pointerDown.current.y;
+      phiRef.current = pointerDown.current.phi - dx / 150;
+      thetaRef.current = Math.max(
+        -Math.PI / 3,
+        Math.min(Math.PI / 3, pointerDown.current.theta + dy / 150)
+      );
+    }
 
-    import("globe.gl").then((mod) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const GlobeGL = mod.default as any;
-      const container = containerRef.current;
-      if (!container) return;
+    // Check marker proximity
+    const mouseX = clientX - rect.left;
+    const mouseY = clientY - rect.top;
+    const w = rect.width;
+    const h = rect.height;
 
-      const arcs = generateArcs();
+    let closestMarker: MarkerData | null = null;
+    let closestDist = Infinity;
+    const hitRadius = w * 0.06; // generous hit area
 
-      globe = GlobeGL({ animateIn: true })
-        .width(size)
-        .height(size)
-        .backgroundColor("rgba(0,0,0,0)")
-        .showAtmosphere(true)
-        .atmosphereColor("#C9A84C")
-        .atmosphereAltitude(0.12)
-        .globeImageUrl(
-          "//unpkg.com/three-globe/example/img/earth-night.jpg"
-        )
-        // Points
-        .pointsData(MARKERS)
-        .pointLat("lat")
-        .pointLng("lng")
-        .pointColor(() => "#C9A84C")
-        .pointAltitude(0.015)
-        .pointRadius(0.45)
-        .pointsMerge(false)
-        .pointLabel((d: object) => makeLabel(d as MarkerData))
-        // Arcs
-        .arcsData(arcs)
-        .arcStartLat("startLat")
-        .arcStartLng("startLng")
-        .arcEndLat("endLat")
-        .arcEndLng("endLng")
-        .arcColor(() => ["rgba(201,168,76,0.25)", "rgba(201,168,76,0.25)"])
-        .arcDashLength(0.5)
-        .arcDashGap(0.3)
-        .arcDashAnimateTime(3000)
-        .arcStroke(0.3)(container);
+    for (const m of MARKERS) {
+      const pos = projectMarker(
+        m.location[0],
+        m.location[1],
+        phiRef.current,
+        thetaRef.current,
+        w,
+        h
+      );
+      if (!pos.visible) continue;
 
-      // Orbit controls
-      const controls = globe.controls();
-      controls.autoRotate = true;
-      controls.autoRotateSpeed = 0.4;
-      controls.enableZoom = false;
-      controls.enablePan = false;
-      controls.rotateSpeed = 0.6;
-      controls.minPolarAngle = Math.PI * 0.2;
-      controls.maxPolarAngle = Math.PI * 0.8;
+      const dist = Math.sqrt((mouseX - pos.x) ** 2 + (mouseY - pos.y) ** 2);
+      if (dist < hitRadius && dist < closestDist) {
+        closestDist = dist;
+        closestMarker = m;
+      }
+    }
 
-      // Initial view - zoom out a bit more on small screens
-      const altitude = size < 400 ? 2.8 : 2.2;
-      globe.pointOfView({ lat: 15, lng: 25, altitude });
+    if (closestMarker) {
+      const pos = projectMarker(
+        closestMarker.location[0],
+        closestMarker.location[1],
+        phiRef.current,
+        thetaRef.current,
+        w,
+        h
+      );
+      setTooltip({
+        x: pos.x,
+        y: pos.y,
+        country: closestMarker.country,
+        partner: closestMarker.partner,
+      });
+    } else {
+      setTooltip(null);
+    }
+  }, []);
 
-      globeRef.current = globe;
-      setTimeout(() => setLoaded(true), 300);
+  useEffect(() => {
+    if (!canvasRef.current || !containerRef.current) return;
+
+    const w = containerRef.current.offsetWidth;
+    widthRef.current = w;
+
+    const globe = createGlobe(canvasRef.current, {
+      devicePixelRatio: 2,
+      width: w * 2,
+      height: w * 2,
+      phi: 0,
+      theta: 0.25,
+      dark: 1,
+      diffuse: 1.2,
+      mapSamples: 20000,
+      mapBrightness: 4,
+      baseColor: [0.15, 0.15, 0.15],
+      markerColor: [0.79, 0.66, 0.3],
+      glowColor: [0.18, 0.15, 0.08],
+      markers: MARKERS,
     });
 
-    return () => {
-      if (globe && typeof globe._destructor === "function") {
-        globe._destructor();
-        globeRef.current = null;
-      }
-    };
-    // Only run on first valid size
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [size > 0 ? 1 : 0]);
+    globeRef.current = globe;
 
-  // Handle resize after init
-  useEffect(() => {
-    if (globeRef.current && size > 100) {
-      globeRef.current.width(size).height(size);
-    }
-  }, [size]);
+    // Animation loop
+    const animate = () => {
+      if (!pointerDown.current) {
+        phiRef.current += 0.003;
+      }
+      globe.update({
+        phi: phiRef.current,
+        theta: thetaRef.current,
+      });
+      frameRef.current = requestAnimationFrame(animate);
+    };
+    frameRef.current = requestAnimationFrame(animate);
+
+    window.addEventListener("resize", onResize);
+
+    setTimeout(() => {
+      if (canvasRef.current) {
+        canvasRef.current.style.opacity = "1";
+      }
+    }, 100);
+
+    return () => {
+      cancelAnimationFrame(frameRef.current);
+      globe.destroy();
+      window.removeEventListener("resize", onResize);
+    };
+  }, [onResize]);
 
   return (
     <div
-      ref={wrapperRef}
-      className="relative w-full max-w-[600px] mx-auto"
+      ref={containerRef}
+      className="relative w-full aspect-square max-w-[600px] mx-auto"
+      onMouseMove={handleMouseMove}
+      onTouchMove={handleMouseMove}
+      onMouseLeave={() => {
+        setTooltip(null);
+        pointerDown.current = null;
+        if (canvasRef.current) canvasRef.current.style.cursor = "grab";
+      }}
     >
       {/* Gold glow behind globe */}
-      <div className="absolute inset-0 rounded-full bg-gold/5 blur-3xl scale-75" />
-      <div
-        ref={containerRef}
-        style={{ width: size || "100%", height: size || 300 }}
-        className={`transition-opacity duration-1000 ${
-          loaded ? "opacity-100" : "opacity-0"
-        }`}
+      <div className="absolute inset-0 rounded-full bg-gold/5 blur-3xl scale-75 pointer-events-none" />
+
+      <canvas
+        ref={canvasRef}
+        onPointerDown={(e) => {
+          pointerDown.current = {
+            x: e.clientX,
+            y: e.clientY,
+            phi: phiRef.current,
+            theta: thetaRef.current,
+          };
+          if (canvasRef.current) canvasRef.current.style.cursor = "grabbing";
+        }}
+        onPointerUp={() => {
+          pointerDown.current = null;
+          if (canvasRef.current) canvasRef.current.style.cursor = "grab";
+        }}
+        style={{
+          width: "100%",
+          height: "100%",
+          cursor: "grab",
+          opacity: 0,
+          transition: "opacity 1s ease",
+          touchAction: "none",
+        }}
       />
+
+      {/* Tooltip */}
+      {tooltip && (
+        <div
+          className="absolute pointer-events-none z-20 transition-all duration-150"
+          style={{
+            left: tooltip.x,
+            top: tooltip.y,
+            transform: "translate(-50%, -120%)",
+          }}
+        >
+          <div className="bg-[#0A0A0A]/95 border border-gold/50 rounded-lg px-4 py-3 backdrop-blur-md shadow-xl shadow-black/50 whitespace-nowrap">
+            <div className="text-gold text-[10px] uppercase tracking-[2.5px] font-semibold mb-1">
+              {tooltip.country}
+            </div>
+            <div className="text-white text-sm font-semibold">
+              {tooltip.partner}
+            </div>
+            <div className="text-neutral-500 text-xs mt-1">
+              Pre / Production / Post
+            </div>
+          </div>
+          {/* Arrow */}
+          <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-gold/50 mx-auto" />
+        </div>
+      )}
     </div>
   );
 }
