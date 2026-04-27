@@ -139,7 +139,7 @@ export default function Work() {
                   damping: 30,
                 }}
                 style={{ zIndex: style.zIndex }}
-                className="absolute w-[320px] sm:w-[480px] lg:w-[580px] cursor-pointer"
+                className="absolute w-[300px] sm:w-[480px] lg:w-[580px] cursor-pointer"
                 onClick={() => {
                   if (isActive) {
                     setActiveVideo(p.videoId);
