@@ -95,24 +95,26 @@ export default function Globe() {
     const context = canvas.getContext("2d");
     if (!context) return;
 
-    // Responsive sizing
+    // Responsive sizing - canvas is larger than globe to avoid clipping the glow
     const containerWidth = container.offsetWidth;
     if (containerWidth < 50) return;
-    const containerHeight = containerWidth; // square
-    const radius = containerWidth / 2.3;
+    const padding = containerWidth * 0.15; // 15% padding each side for glow
+    const canvasSize = containerWidth;
+    const containerHeight = canvasSize;
+    const radius = (containerWidth - padding * 2) / 2;
 
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = containerWidth * dpr;
-    canvas.height = containerHeight * dpr;
-    canvas.style.width = `${containerWidth}px`;
-    canvas.style.height = `${containerHeight}px`;
+    canvas.width = canvasSize * dpr;
+    canvas.height = canvasSize * dpr;
+    canvas.style.width = `${canvasSize}px`;
+    canvas.style.height = `${canvasSize}px`;
     context.scale(dpr, dpr);
 
-    // Projection
+    // Projection - centered in canvas
     const projection = d3
       .geoOrthographic()
       .scale(radius)
-      .translate([containerWidth / 2, containerHeight / 2])
+      .translate([canvasSize / 2, canvasSize / 2])
       .clipAngle(90);
 
     const path = d3.geoPath().projection(projection).context(context);
@@ -133,11 +135,11 @@ export default function Globe() {
     const GRID_COLOR = "rgba(201, 168, 76, 0.08)";
 
     const render = () => {
-      context.clearRect(0, 0, containerWidth, containerHeight);
+      context.clearRect(0, 0, canvasSize, canvasSize);
       const currentScale = projection.scale();
       const scaleFactor = currentScale / radius;
-      const cx = containerWidth / 2;
-      const cy = containerHeight / 2;
+      const cx = canvasSize / 2;
+      const cy = canvasSize / 2;
 
       // Outer glow
       const glowGrad = context.createRadialGradient(cx, cy, currentScale * 0.95, cx, cy, currentScale * 1.3);
@@ -183,8 +185,8 @@ export default function Globe() {
           const projected = projection([dot.lng, dot.lat]);
           if (
             projected &&
-            projected[0] >= 0 && projected[0] <= containerWidth &&
-            projected[1] >= 0 && projected[1] <= containerHeight
+            projected[0] >= 0 && projected[0] <= canvasSize &&
+            projected[1] >= 0 && projected[1] <= canvasSize
           ) {
             context.beginPath();
             context.arc(projected[0], projected[1], 1.0 * scaleFactor, 0, 2 * Math.PI);
@@ -201,8 +203,8 @@ export default function Globe() {
           const projected = projection([marker.lng, marker.lat]);
           if (
             projected &&
-            projected[0] >= 0 && projected[0] <= containerWidth &&
-            projected[1] >= 0 && projected[1] <= containerHeight
+            projected[0] >= 0 && projected[0] <= canvasSize &&
+            projected[1] >= 0 && projected[1] <= canvasSize
           ) {
             // Check if on visible side
             const dist = d3.geoDistance(
