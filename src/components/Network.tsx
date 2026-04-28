@@ -1,20 +1,19 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowUpRight, CheckCircle } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import TiltCard from "./TiltCard";
+import CountryOutline from "./CountryOutlines";
 
 const PARTNERS = [
-  { country: "India", flag: "\u{1F1EE}\u{1F1F3}", partner: "India Take One" },
-  { country: "Saudi Arabia", flag: "\u{1F1F8}\u{1F1E6}", partner: "Ideation Studios" },
-  { country: "Nigeria", flag: "\u{1F1F3}\u{1F1EC}", partner: "Greoh Studios" },
-  { country: "South Africa", flag: "\u{1F1FF}\u{1F1E6}", partner: "Wallflower Productions" },
-  { country: "South Africa", flag: "\u{1F1FF}\u{1F1E6}", partner: "After Dark Post Production" },
-  { country: "Egypt", flag: "\u{1F1EA}\u{1F1EC}", partner: "Asap Films" },
-  { country: "United Kingdom", flag: "\u{1F1EC}\u{1F1E7}", partner: "Precession Productions" },
+  { country: "India", partner: "India Take One" },
+  { country: "Saudi Arabia", partner: "Ideation Studios" },
+  { country: "Nigeria", partner: "Greoh Studios" },
+  { country: "South Africa", partner: "Wallflower Productions" },
+  { country: "South Africa", partner: "After Dark Post Production" },
+  { country: "Egypt", partner: "Asap Films" },
+  { country: "United Kingdom", partner: "Precession Productions" },
 ];
-
-const SERVICES = ["Pre-Production", "Production", "Post-Production"];
 
 const container = {
   hidden: {},
@@ -58,26 +57,20 @@ export default function Network() {
             <motion.div key={i} variants={item}>
               <TiltCard className="glass-card rounded-xl p-6 group h-full">
                 <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <span className="text-2xl mr-2">{p.flag}</span>
-                    <span className="text-gold text-sm font-medium tracking-wide uppercase">
-                      {p.country}
-                    </span>
-                  </div>
+                  <CountryOutline
+                    country={p.country}
+                    size={40}
+                    className="text-gold/60 group-hover:text-gold transition-colors duration-300"
+                  />
                   <ArrowUpRight
                     size={16}
                     className="text-neutral-600 group-hover:text-gold transition-colors"
                   />
                 </div>
-                <h3 className="text-white font-semibold text-lg mb-4">{p.partner}</h3>
-                <div className="space-y-2">
-                  {SERVICES.map((s) => (
-                    <div key={s} className="flex items-center gap-2 text-neutral-400 text-sm">
-                      <CheckCircle size={14} className="text-gold/70 shrink-0" />
-                      {s}
-                    </div>
-                  ))}
-                </div>
+                <p className="text-gold/80 text-xs font-medium tracking-[0.2em] uppercase mb-1">
+                  {p.country}
+                </p>
+                <h3 className="text-white font-semibold text-lg">{p.partner}</h3>
               </TiltCard>
             </motion.div>
           ))}
