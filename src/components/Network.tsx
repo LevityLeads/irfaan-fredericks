@@ -1,9 +1,16 @@
 "use client";
 
+import { useRef } from "react";
 import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import TiltCard from "./TiltCard";
 import CountryOutline from "./CountryOutlines";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
+import { DrawSVGPlugin } from "gsap/DrawSVGPlugin";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(useGSAP, DrawSVGPlugin, ScrollTrigger);
 
 const PARTNERS = [
   { country: "India", partner: "India Take One" },
@@ -26,8 +33,28 @@ const item = {
 };
 
 export default function Network() {
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useGSAP(
+    () => {
+      // DrawSVG on country outlines: draw in when scrolled to
+      gsap.from(".country-path", {
+        drawSVG: "0%",
+        duration: 1.5,
+        ease: "power2.out",
+        stagger: 0.15,
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: "top 70%",
+          once: true,
+        },
+      });
+    },
+    { scope: sectionRef }
+  );
+
   return (
-    <section id="network" className="py-24 lg:py-32 relative">
+    <section id="network" ref={sectionRef} className="py-24 lg:py-32 relative">
       <div className="max-w-7xl mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -61,6 +88,7 @@ export default function Network() {
                     country={p.country}
                     size={40}
                     className="text-gold/60 group-hover:text-gold transition-colors duration-300"
+                    drawClass="country-path"
                   />
                   <ArrowUpRight
                     size={16}
