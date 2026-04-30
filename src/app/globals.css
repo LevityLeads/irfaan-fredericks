@@ -22,7 +22,9 @@ body {
 }
 
 /* Gold gradient text */
-.gold-gradient-text {
+.gold-gradient-text,
+.gold-gradient-text div,
+.gold-gradient-text span {
   background: linear-gradient(135deg, #C9A84C 0%, #F0D78C 50%, #C9A84C 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
